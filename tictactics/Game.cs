@@ -41,6 +41,9 @@ namespace tictactics
         public int selectedGrid = -1;
         public int blocedField = -1;
 
+        public List<Move> history;
+        int lastMoveId = -1;
+
         int moves = 0;
 
 
@@ -49,7 +52,9 @@ namespace tictactics
             playerTurn = 1;
             board = new int[9,9];
             gridCounters = new int[9];
-            takenGrids = new int[9];            
+            takenGrids = new int[9];
+
+            history = new List<Move>();
             
             ClearBoard();
         }
@@ -59,6 +64,7 @@ namespace tictactics
         {
             if (board[grid, field] == 0)
             {
+                moves++;
                 gridCounters[grid]++;
                 if (player == 1)
                 {
@@ -224,9 +230,9 @@ namespace tictactics
             }
 
             if (player == 2)
-                return possibleWin[1] * 0.03f - possibleWin[0] * 0.02f;
+                return possibleWin[1] * 0.015f - possibleWin[0] * 0.01f;
             else
-                return possibleWin[0] * 0.03f - possibleWin[1] * 0.02f;
+                return possibleWin[0] * 0.015f - possibleWin[1] * 0.01f;
 
         }
 
@@ -293,6 +299,11 @@ namespace tictactics
             if (!IsMoveLegal(grid, field, player))
                 return false;
 
+            Move m = new Move(grid, field, player);
+            m.prevBlocked = blocedField;
+            m.prevSelect = selectedGrid;
+            m.wasFreeMove = isFreeMove;
+
             selectedGrid = field;
             blocedField = grid;
             board[grid, field] = player;
@@ -321,6 +332,8 @@ namespace tictactics
             }
 
             moves++;
+            lastMoveId++;
+            history.Add(m);
                 
             return true;
         }
@@ -387,6 +400,29 @@ namespace tictactics
 
         }
 
+        public int Undo()
+        {
+            if(lastMoveId >= 0)
+            {
+                UnmakeMove(history.ElementAt(lastMoveId));
+                lastMoveId--;
+            }
+
+            
+            return selectedGrid;
+            
+        }
+
+        public int Redo()
+        {
+            if (history.Count > lastMoveId +1)
+            {
+                makeMove(history.ElementAt(lastMoveId + 1));
+                lastMoveId++;
+            }
+
+            return selectedGrid;
+        }
 
         private void FinishGame(int p)
         {
@@ -402,15 +438,19 @@ namespace tictactics
 
         Move FindBestMove(int player)
         {
-            levels = 9;
+            levels = 18; //Math.Max(12, 12 + (moves - 35) / 4);
+                
             List<Move> possible = GetLegalMoves(player);
-            Move best = possible[0];
+            Move best;
+
+            int i = 1;
 
             foreach (Move mov in possible)
             {
-                Min(mov,1);
-                if (mov.value > best.value)
-                    best = mov;
+                Console.WriteLine("move {0} out of {1}",i, possible.Count);
+                float score = AlphaBetaMax(mov,1,-100,100);
+
+                ++i;
             }
 
             float max = possible.Max(m => m.value);
@@ -420,6 +460,7 @@ namespace tictactics
 
             best = choices.ElementAt(rnd.Next(0, choices.Count()));
 
+            Console.WriteLine("Best val: {0}",best.value);
             return best;
         }
 
@@ -576,61 +617,175 @@ namespace tictactics
                 }
             }
 
-            return score + balance*0.025f + possibleLines(2);
+            return score + balance*0.03f + possibleLines(2);
         }
 
+        float AlphaBetaMin(Move m, int level, float alpha, float beta)
+        {
+            mins++;
+            int g = m.g;
+            tryMove(m);
 
-        float AnalyzeMoves(Move m, int level)
-        {            
-            counter++;
-
-            if (m != null)
+            if (takenGrids[g] == 0 && gridCounters[g] > 2)
             {
-                int g = m.g;
-                tryMove(m);
+                int newState;
+                if (gridCounters[g] < 7)
+                    newState = FastBoardCheck(g, m.f);
+                else newState = CheckSmallBoard(g);
+                takenGrids[g] = newState;
 
-                if (takenGrids[g] == 0 && gridCounters[g] > 2)
+                if (newState != 0)
                 {
-                    int newState = FastBoardCheck(g,m.f);
-                    takenGrids[g] = newState;
-
-                    if (newState != 0)
+                    int winner = CheckBigBoard();
+                    if (winner == 2)
                     {
-                        int winner = CheckBigBoard();
-                        if (winner != 0)
-                        {
-                            UnmakeMove(m);
-                            reverses++;
-                            wins++;
-                            return winner;
-                        }
-                            
+                        UnmakeMove(m);
+                        m.value = 1.0f + (1.0f /level);
+                        wins++;
+                        return m.value;
                     }
-                        
+                    else if (winner == 1)
+                    {
+                        UnmakeMove(m);
+                        m.value = -1.0f -(1.0f /level);
+                        wins++;
+                        return m.value;
+                    }
+                    else if (winner == 4)
+                    {
+                        UnmakeMove(m);
+                        m.value = 0;
+                        wins++;
+                        return 0;
+
+                    }
 
                 }
-
             }
 
-            if (level < 10)
+            if (level < levels)
             {
                 List<Move> possible = GetLegalMoves(playerTurn);
 
-                foreach(Move mov in possible)
+                if (possible.Count == 1)
+                    level--;
+                if (isFreeMove)
+                    level++;
+
+                foreach (Move mov in possible)
                 {
-                    AnalyzeMoves(mov, level + 1);
+                    float score = AlphaBetaMax(mov, level + 1, alpha, beta);
+
+                    if (score >= beta)
+                    {
+                        m.value = beta;
+                        UnmakeMove(m);
+                        return beta;
+                    }
+
+                    if (score > alpha)
+                        alpha = score;
+
+                }
+
+                m.value = possible.Min(move => move.value);
+            }
+            else
+            {
+                m.value = ScoreCurrentState();
+                UnmakeMove(m);
+                return m.value;
+            }
+
+            UnmakeMove(m);
+            m.value = alpha;
+            return alpha;
+        }
+
+        float AlphaBetaMax(Move m, int level, float alpha, float beta)
+        {
+            maxes++;
+            int g = m.g;
+            tryMove(m);
+
+            if (takenGrids[g] == 0 && gridCounters[g] > 2)
+            {
+                int newState;
+                if (gridCounters[g] < 7)
+                    newState = FastBoardCheck(g, m.f);
+                else newState = CheckSmallBoard(g);
+                takenGrids[g] = newState;
+
+                if (newState != 0)
+                {
+                    int winner = CheckBigBoard();
+                    if (winner == 2)
+                    {
+                        UnmakeMove(m);
+                        m.value = 1.0f + (1.0f / level);
+                        wins++;
+                        return m.value;
+                    }
+                    else if (winner == 1)
+                    {
+                        UnmakeMove(m);
+                        m.value = -1.0f - (1.0f / level);
+                        wins++;
+                        return m.value;
+                    }
+                    else if (winner == 4)
+                    {
+                        UnmakeMove(m);
+                        m.value = 0;
+                        wins++;
+                        return 0;
+
+                    }
+
                 }
             }
-          
 
-            if (m != null)
+            if (level < levels)
             {
+                List<Move> possible = GetLegalMoves(playerTurn);
+
+                if (possible.Count == 1)
+                    level--;
+                if (isFreeMove)
+                    level++;
+
+                foreach (Move mov in possible)
+                {
+                    float score = AlphaBetaMin(mov, level + 1,alpha,beta);
+
+                    if (score <= alpha)
+                    {
+                        m.value = alpha;
+                        UnmakeMove(m);
+                        return alpha;
+                    }
+
+                    if (score < beta)
+                        beta = score;
+                }
+
+                m.value = possible.Max(move => move.value);
+            }
+            else
+            {
+                m.value = ScoreCurrentState();
                 UnmakeMove(m);
-                reverses++;
+                return m.value;
             }
 
-            return 0;
+
+
+            UnmakeMove(m);
+            m.value = beta;
+            return beta;
         }
+
+
 
 
         int fails = 0;

@@ -51,6 +51,18 @@ namespace tictactics
                 setupPlayer = 2;
             }
 
+            if (e.Key == Key.Left)
+            {
+                game.Undo();
+                HighlightGrid(game.Undo());
+            }
+
+            if (e.Key == Key.Right)
+            {
+                game.Redo();
+                HighlightGrid(game.Redo());
+            }
+
         }
 
         void DoSetup(int grid, int field)
