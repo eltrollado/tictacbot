@@ -90,12 +90,20 @@ namespace tictactics
                 {
                     p2grids[grid]--;
                 }
+                if (takenGrids[grid] != 0)
+                {
+                    takenGrids[grid] = VerifyGrid(grid);
+                }
                 return false;
             }
 
             board[grid, field] = player;
 
-            takenGrids[grid] = CheckSmallBoard(grid);
+            if (takenGrids[grid] == 0)
+            {
+                takenGrids[grid] = CheckSmallBoard(grid);
+            }
+            
 
             return true;
         }
@@ -128,6 +136,37 @@ namespace tictactics
             else return 4;
         }
 
+        public int VerifyGrid(int grid)
+        {
+            int[] sb = new int[9];
+            for (int i = 0; i < 9; i++)
+            {
+                sb[i] = board[grid, i];
+                if (sb[i] == 0) sb[i] = 4;
+            }
+
+            bool possibleWin = false;
+
+            int owner = takenGrids[grid];
+            if (owner == 0)
+                return 0;
+
+            for (int i = 0; i < 8; i++)
+            {
+                int outcome = sb[pw[i, 0]] | sb[pw[i, 2]] | sb[pw[i, 1]];
+
+                if (owner == outcome)
+                    return owner;
+
+                if (outcome == 5 || outcome == 6)
+                    possibleWin = true;
+            }
+
+            if (possibleWin)
+                return 0;
+            else return 4;
+        }
+
         int FastBoardCheck(int g, int f)
         {
             switch (f)
@@ -147,7 +186,6 @@ namespace tictactics
                     (board[g, 0] & board[g, 3] & board[g, 6]);
 
                 case 4: return (board[g, 3] & board[g, 4] & board[g, 5]) |
-                    (board[g, 0] & board[g, 3] & board[g, 6]) |
                     (board[g, 1] & board[g, 4] & board[g, 7]) |
                     (board[g, 0] & board[g, 4] & board[g, 8]) |
                     (board[g, 2] & board[g, 4] & board[g, 6]);
@@ -171,19 +209,6 @@ namespace tictactics
             }
         }
 
-        bool IsWinPossible(int g)
-        {
-            for (int i = 0; i < 9; i++)
-            {
-                if (board[g, i] == 0)
-                {
-
-                }
-            }
-
-            return false;
-        }
-
 
         public int CheckBigBoard()
         {
@@ -204,7 +229,7 @@ namespace tictactics
                     return 2;
                 if (outcome == 1 || outcome == 5)
                     return 1;
-                if (outcome == 9 || outcome == 10)
+                if (outcome == 9 || outcome == 10 || outcome == 8)
                     possibleWin = true;
             }
 
@@ -328,11 +353,15 @@ namespace tictactics
             {
                 takenGrids[grid] = CheckSmallBoard(grid);
                 int p = CheckBigBoard();
-                FinishGame(p);
+                if (p != 0)
+                    FinishGame(p);
             }
 
             moves++;
             lastMoveId++;
+
+            if (lastMoveId != history.Count)
+                history.RemoveRange(lastMoveId, history.Count - lastMoveId);
             history.Add(m);
                 
             return true;
@@ -395,7 +424,7 @@ namespace tictactics
 
             if (takenGrids[g] != 0)
             {
-                takenGrids[g] = CheckSmallBoard(g);
+                takenGrids[g] = VerifyGrid(g);
             }
 
         }
@@ -417,8 +446,18 @@ namespace tictactics
         {
             if (history.Count > lastMoveId +1)
             {
-                makeMove(history.ElementAt(lastMoveId + 1));
+                Move m = history.ElementAt(lastMoveId + 1);
+                tryMove(m);
                 lastMoveId++;
+
+                int grid = m.g;
+                if (takenGrids[grid] == 0)
+                {
+                    takenGrids[grid] = CheckSmallBoard(grid);
+                    int p = CheckBigBoard();
+                    if (p != 0)
+                        FinishGame(p);
+                }
             }
 
             return selectedGrid;
@@ -438,7 +477,7 @@ namespace tictactics
 
         Move FindBestMove(int player)
         {
-            levels = 18; //Math.Max(12, 12 + (moves - 35) / 4);
+            levels = Math.Max(12, 12 + (moves - 35) / 4);
                 
             List<Move> possible = GetLegalMoves(player);
             Move best;
@@ -464,135 +503,37 @@ namespace tictactics
             return best;
         }
 
-
-        float Min(Move m, int level)
+        Move FindBestMoveWithinTime(uint miliseconds, int player)
         {
-            mins++;
-            int g = m.g;
-            tryMove(m);
+            levels = 7;
 
-            if (takenGrids[g] == 0 && gridCounters[g] > 2)
+            List<Move> possible = GetLegalMoves(player);
+
+            Stopwatch stopwatch = Stopwatch.StartNew(); 
+
+            foreach (Move mov in possible)
             {
-                int newState;
-                if (gridCounters[g] < 7)
-                    newState = FastBoardCheck(g, m.f);
-                else newState = CheckSmallBoard(g);
-                takenGrids[g] = newState;
+                float score = AlphaBetaMax(mov, 1, -100, 100);
+            }            
+            
+            stopwatch.Stop();
 
-                if (newState != 0)
-                {
-                    int winner = CheckBigBoard();
-                    if (winner == 2)
-                    {
-                        UnmakeMove(m);
-                        m.value = 1;
-                        wins++;
-                        return 1;
-                    }
-                    else if (winner == 1)
-                    {
-                        UnmakeMove(m);
-                        m.value = -1;
-                        wins++;
-                        return -1;
-                    }
-                    else if (winner == 4)
-                    {
-                        UnmakeMove(m);
-                        m.value = 0;
-                        wins++;
-                        return 0;
+            possible = possible.OrderByDescending(m => m.value).ToList() ;
 
-                    }
+            levels = 12;
 
-                }
+            foreach (Move mov in possible)
+            {
+                float score = AlphaBetaMax(mov, 1, -100, 100);
             }
 
-            if (level < levels)
-            {
-                List<Move> possible = GetLegalMoves(playerTurn);
+            possible = possible.OrderByDescending(m => m.value).ToList();
 
-                if (possible.Count == 1)
-                    level--;
+            return possible[0];
 
-                foreach (Move mov in possible)
-                {
-                    Max(mov, level + 1);
-                }
-
-                m.value = possible.Min(move => move.value);
-            }
-            else
-                m.value = ScoreCurrentState();
-
-            UnmakeMove(m);
-            return 0;
         }
 
-        float Max(Move m, int level)
-        {
-            maxes++;
-            int g = m.g;
-            tryMove(m);
 
-            if (takenGrids[g] == 0 && gridCounters[g] > 2)
-            {
-                int newState;
-                if (gridCounters[g] < 7)
-                    newState = FastBoardCheck(g, m.f);
-                else newState = CheckSmallBoard(g);
-                takenGrids[g] = newState;
-
-                if (newState != 0)
-                {
-                    int winner = CheckBigBoard();
-                    if (winner == 2)
-                    {
-                        UnmakeMove(m);
-                        m.value = 1;
-                        wins++;
-                        return 1;
-                    }
-                    else if (winner == 1)
-                    {
-                        UnmakeMove(m);
-                        m.value = -1;
-                        wins++;
-                        return -1;
-                    }
-                    else if (winner == 4)
-                    {
-                        UnmakeMove(m);
-                        m.value = 0;
-                        wins++;
-                        return 0;
-
-                    }
-
-                }
-            }
-
-            if (level < levels)
-            {
-                List<Move> possible = GetLegalMoves(playerTurn);
-
-                if (possible.Count == 1)
-                    level--;
-
-                foreach (Move mov in possible)
-                {
-                    Min(mov, level + 1);
-                }
-
-                m.value = possible.Max(move => move.value);
-            }
-            else
-                m.value = ScoreCurrentState();
-
-
-            UnmakeMove(m);
-            return 0;
-        }
 
         float ScoreCurrentState()
         {
@@ -807,6 +748,14 @@ namespace tictactics
 
             stopwatch.Stop();
             Console.WriteLine(stopwatch.ElapsedMilliseconds);
+
+
+            ////your sample code
+            //stopwatch.Restart();
+            //m = FindBestMoveWithinTime(2000,2);
+
+            //stopwatch.Stop();
+            //Console.WriteLine(stopwatch.ElapsedMilliseconds);
 
 
 

@@ -36,40 +36,39 @@ namespace tictactics
 
         private void key_handler(object sender, KeyEventArgs e)
         {
-            if (e.Key == Key.S)
+
+            switch(e.Key)
             {
-                setupMode = !setupMode;
+                case Key.Left:
+                    game.Undo();
+                    game.Undo();
+                    DrawBoard();
+                    break;
+                case Key.Right:
+                    game.Redo();
+                    game.Redo();
+                    DrawBoard();
+                    break;
+                case Key.S:
+                    setupMode = !setupMode;
+                    break;
+                case Key.D1:
+                    setupPlayer = 1;
+                    break;
+                case Key.D2:
+                    setupPlayer = 2;
+                    break;
             }
 
-            if (e.Key == Key.D1)
-            {
-                setupPlayer = 1;
-            }
-
-            if (e.Key == Key.D2)
-            {
-                setupPlayer = 2;
-            }
-
-            if (e.Key == Key.Left)
-            {
-                game.Undo();
-                HighlightGrid(game.Undo());
-            }
-
-            if (e.Key == Key.Right)
-            {
-                game.Redo();
-                HighlightGrid(game.Redo());
-            }
 
         }
 
         void DoSetup(int grid, int field)
         {
-            if (game.setField(grid, field, setupPlayer))
-                ColorField(grid, field, setupPlayer);
-            else ColorField(grid, field, 4);
+            game.setField(grid, field, setupPlayer);
+
+            DrawBoard();
+
         }
 
         private void Rectangle_MouseUp(object sender, MouseButtonEventArgs e)
@@ -92,107 +91,106 @@ namespace tictactics
                 return;
 
 
-            ColorField(g, f, 1);
+            DrawBoard();
 
             Move m = game.MakeAIMove();
 
-            ColorField(m.g, m.f, 2);
-
-
-            HighlightGrid(game.selectedGrid);
+            DrawBoard();
         }
 
-        private void ColorField(int grid, int field, int player)
+        private void DrawBoard()
+        {
+            for (int i = 0; i < 9; i++)
+            {
+                for (int j = 0; j < 9; j++)
+                {
+                    ColorField(i, j);
+                }
+            }
+        }
+
+        private void ColorField(int grid, int field)
         {
             Color c;
             int state = game.takenGrids[grid];
+            int player = game.board[grid, field];
+            int selected = game.selectedGrid;
+            int blocked = game.blocedField;
+            bool freeMove = game.isFreeMove;
 
-            if (state == 0)
+            bool isAvailable = freeMove || (grid == selected && (field != blocked || game.gridCounters[grid] == 8));
+
+            Color DrawTakenC = Color.FromRgb(175, 70, 200);
+            Color DrawFreeActiveC = Color.FromRgb(231, 160, 250);
+            Color DrawFreeNotActiveC = Color.FromRgb(200, 100, 220);
+
+            Color BlockedC = Color.FromRgb(200, 200, 200);
+            Color FreeActiveC = Color.FromRgb(255, 255, 255);
+            Color FreeNotActiveC = Color.FromRgb(200, 200, 200);
+
+            Color RedTakenC = Color.FromRgb(150, 0, 0);
+            Color RedFreeActiveC = Color.FromRgb(255, 200, 200);
+            Color RedFreeNotActiveC = Color.FromRgb(210, 100, 100);
+
+            Color BlueTakenC = Color.FromRgb(0, 111, 111);
+            Color BlueFreeNotActiveC = Color.FromRgb(0, 161, 161);
+            Color BlueFreeActiveC = Color.FromRgb(100, 210, 210);
+
+            c = DrawTakenC;
+
+            switch (state)
             {
-                switch(player){
-                    case 1: c = Color.FromRgb(0,111,111);
-                        break;
-                    case 2: c = Color.FromRgb(150,0,0);
-                        break;
-                    case 3: c = Color.FromRgb(200, 200, 200);
-                        break;
-                    default: c = Color.FromRgb(255, 255, 255);
-                        break;
-                }
-            }
-            else
-            {
-                if(player == 1 || player == 2)
-                {
-                    switch (state)
+                case 0:
+                    switch (player)
                     {
-                        case 1: c = Color.FromRgb(0, 111, 111);
+                        case 0:
+                            if (isAvailable)
+                                c = FreeActiveC;
+                            else
+                                c = FreeNotActiveC;
                             break;
-                        case 2: c = Color.FromRgb(150, 0, 0);
+                        case 1:
+                            c = BlueTakenC;
                             break;
-                        case 3: c= Color.FromRgb(160, 43, 210);
-                            break;
-                        default: c = Color.FromRgb(255, 255, 255);
+                        case 2:
+                            c = RedTakenC;
                             break;
                     }
+                    break;
+                case 1:
+                    if (player != 0)
+                        c = BlueTakenC;
+                    else if (isAvailable)
+                        c = BlueFreeActiveC;
+                    else c = BlueFreeNotActiveC;
+                    break;
 
-                }
-                else if (player == 4)
-                {
-                    switch (state)
-                    {
-                        case 1: c = Color.FromRgb(100, 210, 210);
-                            break;
-                        case 2: c = Color.FromRgb(255, 200, 200);
-                            break;
-                        case 3: c = Color.FromRgb(210, 150, 255);
-                            break;
-                        default: c = Color.FromRgb(255, 255, 255);
-                            break;
-                    }
+                case 2:
+                    if (player != 0)
+                        c = RedTakenC;
+                    else if (isAvailable)
+                        c = RedFreeActiveC;
+                    else c = RedFreeNotActiveC;
+                    break;
 
-                }
-                else
-                {
-                    switch (state)
-                    {
-                        case 1: c = Color.FromRgb(0, 161, 161);
-                            break;
-                        case 2: c = Color.FromRgb(210, 100, 100);
-                            break;
-                        case 3: c = Color.FromRgb(210, 93, 255);
-                            break;
-                        default: c = Color.FromRgb(255, 255, 255);
-                            break;
-                    }
-                }
+                case 4:
+                    if (player != 0)
+                        c = DrawTakenC;
+                    else if (isAvailable)
+                        c = DrawFreeActiveC;
+                    else c = DrawFreeNotActiveC;
+                    break;
+
+                default:
+                    c = DrawTakenC;
+                    break;
             }
+
 
 
             fields[grid][field].Fill = new SolidColorBrush(c);
         }
 
-        private void HighlightGrid(int grid)
-        {
-            for (int i = 0; i < 9; ++i)
-            {
-                int state = game.takenGrids[i];
-
-                for (int j = 0; j < 9; j++)
-                {
-                    if (game.board[i, j] == 0)
-                        if ((i == grid && j != game.blocedField) || game.isFreeMove || (game.gridCounters[i] == 8 && i == grid))
-                            // field available
-                            ColorField(i, j, 4);
-                            // not available
-                        else ColorField(i, j, 3);
-                }
-
-                
-            }
-
-
-        }
 
         private void Grid_Loaded(object sender, RoutedEventArgs e)
         {
