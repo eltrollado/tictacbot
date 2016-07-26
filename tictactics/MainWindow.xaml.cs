@@ -20,6 +20,7 @@ namespace tictactics
     /// </summary>
     public partial class MainWindow : Window
     {
+        TicConsole console = new TicConsole();
 
         bool setupMode = false;
         int setupPlayer = 1;
@@ -50,13 +51,29 @@ namespace tictactics
                     DrawBoard();
                     break;
                 case Key.S:
-                    setupMode = !setupMode;
+                    if (setupMode)
+                    {
+                        setupMode = false;
+                        console.WriteLine("Game Mode");
+                    }
+                    else
+                    {
+                        setupMode = true;
+                        console.WriteLine("Setup Mode");
+                    }
                     break;
                 case Key.D1:
                     setupPlayer = 1;
                     break;
                 case Key.D2:
                     setupPlayer = 2;
+                    break;
+                case Key.OemTilde:
+                    if (console == null)
+                        console = new TicConsole();
+                    if (console.IsVisible)
+                        console.Hide();
+                    else console.Show();
                     break;
             }
 
@@ -204,7 +221,13 @@ namespace tictactics
             }
 
             game = new Game();
+            game.Output = console.WriteLine;
 
+        }
+
+        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            console.Close();
         }
     }
 }

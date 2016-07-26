@@ -44,6 +44,9 @@ namespace tictactics
         public List<Move> history;
         int lastMoveId = -1;
 
+        public delegate void OutputFunction(string output);
+        public OutputFunction Output;
+
         int moves = 0;
 
 
@@ -474,10 +477,10 @@ namespace tictactics
             return makeMove(m.g, m.f, m.p);
         }
 
-
         Move FindBestMove(int player)
         {
-            levels = Math.Max(12, 12 + (moves - 35) / 4);
+            levels = Math.Max(12, 12 + (moves - 30) / 4);
+            Output(String.Format("Scanning {0} levels", levels));
                 
             List<Move> possible = GetLegalMoves(player);
             Move best;
@@ -486,6 +489,7 @@ namespace tictactics
 
             foreach (Move mov in possible)
             {
+                //Output(String.Format("move {0} out of {1}", i, possible.Count));
                 Console.WriteLine("move {0} out of {1}",i, possible.Count);
                 float score = AlphaBetaMax(mov,1,-100,100);
 
@@ -499,6 +503,7 @@ namespace tictactics
 
             best = choices.ElementAt(rnd.Next(0, choices.Count()));
 
+            Output(String.Format("Best val: {0}", best.value));
             Console.WriteLine("Best val: {0}",best.value);
             return best;
         }
