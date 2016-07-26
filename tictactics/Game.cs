@@ -479,7 +479,7 @@ namespace tictactics
 
         Move FindBestMove(int player)
         {
-            levels = Math.Max(12, 12 + (moves - 30) / 4);
+            levels = 8; // Math.Max(12, 12 + (moves - 30) / 4);
             Output(String.Format("Scanning {0} levels", levels));
                 
             List<Move> possible = GetLegalMoves(player);
@@ -506,36 +506,6 @@ namespace tictactics
             Output(String.Format("Best val: {0}", best.value));
             Console.WriteLine("Best val: {0}",best.value);
             return best;
-        }
-
-        Move FindBestMoveWithinTime(uint miliseconds, int player)
-        {
-            levels = 7;
-
-            List<Move> possible = GetLegalMoves(player);
-
-            Stopwatch stopwatch = Stopwatch.StartNew(); 
-
-            foreach (Move mov in possible)
-            {
-                float score = AlphaBetaMax(mov, 1, -100, 100);
-            }            
-            
-            stopwatch.Stop();
-
-            possible = possible.OrderByDescending(m => m.value).ToList() ;
-
-            levels = 12;
-
-            foreach (Move mov in possible)
-            {
-                float score = AlphaBetaMax(mov, 1, -100, 100);
-            }
-
-            possible = possible.OrderByDescending(m => m.value).ToList();
-
-            return possible[0];
-
         }
 
 
@@ -753,14 +723,6 @@ namespace tictactics
 
             stopwatch.Stop();
             Console.WriteLine(stopwatch.ElapsedMilliseconds);
-
-
-            ////your sample code
-            //stopwatch.Restart();
-            //m = FindBestMoveWithinTime(2000,2);
-
-            //stopwatch.Stop();
-            //Console.WriteLine(stopwatch.ElapsedMilliseconds);
 
 
 

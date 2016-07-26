@@ -135,7 +135,7 @@ namespace tictactics
             int blocked = game.blocedField;
             bool freeMove = game.isFreeMove;
 
-            bool isAvailable = freeMove || (grid == selected && (field != blocked || game.gridCounters[grid] == 8));
+            bool isAvailable = (freeMove && field != blocked) || (grid == selected && (field != blocked || game.gridCounters[grid] == 8));
 
             Color DrawTakenC = Color.FromRgb(175, 70, 200);
             Color DrawFreeActiveC = Color.FromRgb(231, 160, 250);

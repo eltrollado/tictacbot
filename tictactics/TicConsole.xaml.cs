@@ -51,6 +51,9 @@ namespace tictactics
                 Scroller.ScrollToBottom();
             }
 
+            if (e.Key == Key.Escape)
+                this.Hide();
+
         }
     }
 
