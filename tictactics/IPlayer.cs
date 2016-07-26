@@ -6,7 +6,9 @@ using System.Threading.Tasks;
 
 namespace tictactics
 {
-    interface IPlayer
+    public abstract class Player
     {
+        abstract public Move getMove(Move lastMove);
+        abstract public int[] getSetup();
     }
 }

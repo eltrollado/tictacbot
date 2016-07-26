@@ -209,7 +209,7 @@ namespace tictactics
         }
 
 
-        private void Grid_Loaded(object sender, RoutedEventArgs e)
+        async private void Grid_Loaded(object sender, RoutedEventArgs e)
         {
             Grid grid = (Grid)sender;
             grids = grid.Children.OfType<Grid>().ToArray();
@@ -222,6 +222,14 @@ namespace tictactics
 
             game = new Game();
             game.Output = console.WriteLine;
+
+            //await Task.Run(() => RunMatch());
+        }
+
+        void RunMatch()
+        {
+            Match match = new Match(new AI(), new AI() );
+            game = match.game;
 
         }
 

@@ -76,11 +76,20 @@ namespace tictactics
                 else
                 {
                     p2grids[grid]++;
-                }
+                }            
+                
+                board[grid, field] = player;
+
+                if (takenGrids[grid] == 0)
+                {
+                    takenGrids[grid] = CheckSmallBoard(grid);
+                }          
+
+                return true;
                 
             }
 
-            if (board[grid, field] == player)
+            else 
             {
                 gridCounters[grid]--;
                 moves--;
@@ -100,15 +109,7 @@ namespace tictactics
                 return false;
             }
 
-            board[grid, field] = player;
 
-            if (takenGrids[grid] == 0)
-            {
-                takenGrids[grid] = CheckSmallBoard(grid);
-            }
-            
-
-            return true;
         }
 
 
@@ -479,7 +480,7 @@ namespace tictactics
 
         Move FindBestMove(int player)
         {
-            levels = 8; // Math.Max(12, 12 + (moves - 30) / 4);
+            levels =  Math.Max(12, 12 + (moves - 30) / 4);
             Output(String.Format("Scanning {0} levels", levels));
                 
             List<Move> possible = GetLegalMoves(player);

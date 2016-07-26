@@ -8,14 +8,24 @@ namespace tictactics
 {
     class Match
     {
-        Game game;
+        public Game game { get; private set; }
 
-        IPlayer[] players;
+        Player[] players;
 
-        public Match(IPlayer player1, IPlayer player2)
+        public Match(Player player1, Player player2)
         {
             game = new Game();
-            players = new IPlayer[] {player1,player2};
+            players = new Player[] {player1,player2};
+        }
+
+        public void Setup()
+        {
+
+        }
+
+        public void Run()
+        {
+
         }
 
     }
