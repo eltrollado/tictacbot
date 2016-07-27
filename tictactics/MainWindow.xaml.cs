@@ -223,14 +223,25 @@ namespace tictactics
             game = new Game();
             game.Output = console.WriteLine;
 
-            //await Task.Run(() => RunMatch());
+            await Task.Run(() => RunMatch());
         }
 
         void RunMatch()
         {
             Match match = new Match(new AI(), new AI() );
             game = match.game;
+            game.Output = console.WriteLine;
 
+            match.Setup();
+            this.Dispatcher.Invoke(DrawBoard);
+
+            match.Run(DrawAsync);        
+
+        }
+
+        public void DrawAsync()
+        {
+            this.Dispatcher.Invoke(DrawBoard);
         }
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)

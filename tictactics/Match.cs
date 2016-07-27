@@ -20,11 +20,41 @@ namespace tictactics
 
         public void Setup()
         {
+            int[] moves = players[0].getSetup();
 
+            for (int i = 0; i < 9; i++)
+            {
+                game.setField(moves[i], i, 1);
+            }
+
+            System.Threading.Thread.Sleep(100);
+
+            moves = players[1].getSetup();
+
+            for (int i = 0; i < 9; i++)
+            {
+                game.setField(moves[i], i, 2);
+            }
         }
 
-        public void Run()
+        public delegate void DrawCallback();
+
+        public void Run(DrawCallback draw)
         {
+            Game g = new Game();
+            g.Copy(game);
+
+            while(!game.isFinished)
+            {
+                if (game.playerTurn == 1)
+                    game.makeMove(game.GetRandomMove(game.playerTurn));
+                else game.MakeAIMove();
+
+                if (draw != null)
+                    draw();
+
+                System.Threading.Thread.Sleep(200);
+            }
 
         }
 

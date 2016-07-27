@@ -27,10 +27,9 @@ namespace tictactics
     class Game
     {
 
-        int playerTurn;
-
-        public bool isFinished = false;
-        public bool isFreeMove = true;
+        public int playerTurn { get; private set; }
+        public bool isFinished { get; private set; }
+        public bool isFreeMove { get; private set; }
 
         public int[,] board {get; private set;}
         public int[] gridCounters { get; private set; }
@@ -40,6 +39,7 @@ namespace tictactics
 
         public int selectedGrid = -1;
         public int blocedField = -1;
+        public int moves { get; private set; }
 
         public List<Move> history;
         int lastMoveId = -1;
@@ -47,7 +47,7 @@ namespace tictactics
         public delegate void OutputFunction(string output);
         public OutputFunction Output;
 
-        int moves = 0;
+        
 
 
         public Game()
@@ -56,10 +56,37 @@ namespace tictactics
             board = new int[9,9];
             gridCounters = new int[9];
             takenGrids = new int[9];
+            moves = 0;
+            isFinished = false;
+            isFreeMove = true;
 
             history = new List<Move>();
             
             ClearBoard();
+        }
+
+        public Game(Game template)
+        {
+            history = new List<Move>();
+            lastMoveId = -1;
+
+            Copy(template);
+        }
+
+        public void Copy(Game g)
+        {
+            Array.Copy(g.board, this.board, g.board.Length);
+            Array.Copy(g.gridCounters, this.gridCounters, g.gridCounters.Length);
+            Array.Copy(g.takenGrids, this.takenGrids, g.takenGrids.Length);
+            Array.Copy(g.p1grids, this.p1grids, g.p1grids.Length);
+            Array.Copy(g.p2grids, this.p2grids, g.p2grids.Length);
+
+            this.isFinished = g.isFinished;
+            this.isFreeMove = g.isFreeMove;
+            this.playerTurn = g.playerTurn;
+
+            this.selectedGrid = g.selectedGrid;
+            this.blocedField = g.blocedField;
         }
 
 
@@ -480,8 +507,8 @@ namespace tictactics
 
         Move FindBestMove(int player)
         {
-            levels =  Math.Max(12, 12 + (moves - 30) / 4);
-            Output(String.Format("Scanning {0} levels", levels));
+            levels = 10; // Math.Max(12, 12 + (moves - 30) / 4);
+            //Output(String.Format("Scanning {0} levels", levels));
                 
             List<Move> possible = GetLegalMoves(player);
             Move best;
@@ -504,9 +531,18 @@ namespace tictactics
 
             best = choices.ElementAt(rnd.Next(0, choices.Count()));
 
-            Output(String.Format("Best val: {0}", best.value));
+            //Output(String.Format("Best val: {0}", best.value));
             Console.WriteLine("Best val: {0}",best.value);
             return best;
+        }
+
+        public Move GetRandomMove(int player)
+        {
+            List<Move> possible = GetLegalMoves(player);
+            Random rnd = new Random();
+
+            return possible.ElementAt(rnd.Next(0, possible.Count()));
+
         }
 
 
