@@ -30,6 +30,12 @@ namespace tictactics
             Loaded += ConsoleWindowLoaded;
         }
 
+        protected override void OnClosing(CancelEventArgs e)
+        {
+            e.Cancel = true;
+            this.Hide();
+        }
+
         public void WriteLine(string line)
         {
             dc.ConsoleOutput.Add(line);

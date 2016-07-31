@@ -24,18 +24,19 @@ namespace tictactics
        public float value;
     }
 
-    class Game
+    public class Game
     {
 
-        public int playerTurn { get; private set; }
+        public int playerTurn { get; set; }
         public bool isFinished { get; private set; }
         public bool isFreeMove { get; private set; }
+        public bool isFirstMove { get; private set; }
 
         public int[,] board {get; private set;}
         public int[] gridCounters { get; private set; }
         public int[] takenGrids { get; private set; }
-        public int[] p1grids = new int[9];
-        public int[] p2grids = new int[9];
+        public int[] p1grids { get; private set; }
+        public int[] p2grids { get; private set; }
 
         public int selectedGrid = -1;
         public int blocedField = -1;
@@ -56,9 +57,13 @@ namespace tictactics
             board = new int[9,9];
             gridCounters = new int[9];
             takenGrids = new int[9];
+            p1grids = new int[9];
+            p2grids = new int[9];
+
             moves = 0;
             isFinished = false;
             isFreeMove = true;
+            isFirstMove = true;
 
             history = new List<Move>();
             
@@ -67,14 +72,24 @@ namespace tictactics
 
         public Game(Game template)
         {
-            history = new List<Move>();
-            lastMoveId = -1;
+            playerTurn = 1;
+            board = new int[9, 9];
+            gridCounters = new int[9];
+            takenGrids = new int[9];
+            p1grids = new int[9];
+            p2grids = new int[9];
+
+            moves = 0;
+            isFinished = false;
+            isFreeMove = true;
+            isFirstMove = true;
 
             Copy(template);
         }
 
         public void Copy(Game g)
         {
+
             Array.Copy(g.board, this.board, g.board.Length);
             Array.Copy(g.gridCounters, this.gridCounters, g.gridCounters.Length);
             Array.Copy(g.takenGrids, this.takenGrids, g.takenGrids.Length);
@@ -83,10 +98,14 @@ namespace tictactics
 
             this.isFinished = g.isFinished;
             this.isFreeMove = g.isFreeMove;
+            this.isFirstMove = g.isFirstMove;
             this.playerTurn = g.playerTurn;
 
             this.selectedGrid = g.selectedGrid;
-            this.blocedField = g.blocedField;
+            this.blocedField = g.blocedField; 
+            
+            history = new List<Move>();
+            lastMoveId = -1;
         }
 
 
@@ -198,7 +217,7 @@ namespace tictactics
             else return 4;
         }
 
-        int FastBoardCheck(int g, int f)
+        public int FastBoardCheck(int g, int f)
         {
             switch (f)
             {
@@ -250,6 +269,8 @@ namespace tictactics
                 if (sb[i] == 0) sb[i] = 8;
             }
 
+            bool p1win = false;
+            bool p2win = false;
             bool possibleWin = false;
 
             for (int i = 0; i < 8; i++)
@@ -257,12 +278,19 @@ namespace tictactics
                 int outcome = sb[pw[i, 0]] | sb[pw[i, 2]] | sb[pw[i, 1]];
 
                 if (outcome == 2 || outcome == 6)
-                    return 2;
+                    p2win = true;
                 if (outcome == 1 || outcome == 5)
-                    return 1;
+                    p1win = true;
                 if (outcome == 9 || outcome == 10 || outcome == 8)
                     possibleWin = true;
             }
+
+            if (p1win)
+                if (p2win)
+                    return 4;
+                else return 1;
+            else if (p2win)
+                return 2;
 
             if (possibleWin)
                 return 0;
@@ -272,6 +300,8 @@ namespace tictactics
         float possibleLines(int player)
         {
             int[] possibleWin = {0,0};
+
+            const float value = 0.015f;
 
             for (int i = 0; i < 8; i++)
             {
@@ -286,9 +316,9 @@ namespace tictactics
             }
 
             if (player == 2)
-                return possibleWin[1] * 0.015f - possibleWin[0] * 0.01f;
+                return possibleWin[1] * value - possibleWin[0] * value * 0.66f;
             else
-                return possibleWin[0] * 0.015f - possibleWin[1] * 0.01f;
+                return possibleWin[0] * value - possibleWin[1] * value * 0.66f;
 
         }
 
@@ -311,6 +341,16 @@ namespace tictactics
                 return false;
             if (board[grid, field] != 0)
                 return false;
+            if (isFirstMove)
+            {
+                Move m = new Move(grid, field, player);
+                tryMove(m);
+                int res = FastBoardCheck(grid, field);
+                UnmakeMove(m);
+
+                if (res != 0)
+                    return false;
+            }
             if (field == blocedField && gridCounters[grid] < 8)
                 return false;
 
@@ -390,6 +430,7 @@ namespace tictactics
 
             moves++;
             lastMoveId++;
+            isFirstMove = false;
 
             if (lastMoveId != history.Count)
                 history.RemoveRange(lastMoveId, history.Count - lastMoveId);
@@ -431,7 +472,7 @@ namespace tictactics
         }
 
 
-        void UnmakeMove(Move m)
+        public void UnmakeMove(Move m)
         {
             int g = m.g;
 
@@ -505,9 +546,9 @@ namespace tictactics
             return makeMove(m.g, m.f, m.p);
         }
 
-        Move FindBestMove(int player)
+        public Move FindBestMove(int player)
         {
-            levels = 10; // Math.Max(12, 12 + (moves - 30) / 4);
+            int levels = 9; // Math.Max(12, 12 + (moves - 30) / 4);
             //Output(String.Format("Scanning {0} levels", levels));
                 
             List<Move> possible = GetLegalMoves(player);
@@ -519,7 +560,7 @@ namespace tictactics
             {
                 //Output(String.Format("move {0} out of {1}", i, possible.Count));
                 Console.WriteLine("move {0} out of {1}",i, possible.Count);
-                float score = AlphaBetaMax(mov,1,-100,100);
+                float score = AlphaBetaMax(mov, levels, -100, 100, 1, player);
 
                 ++i;
             }
@@ -547,15 +588,21 @@ namespace tictactics
 
 
 
-        float ScoreCurrentState()
+        float ScoreCurrentState(int player)
         {
             float score = 0;
+
+            const float gridVal = 0.1f;
+            const float markVal = 0.03f;
+
+            float side = player == 2 ? 1.0f : -1.0f;
+
             for (int i = 0; i < 9; i++)
             {
                 if (takenGrids[i] == 1)
-                    score -= 0.1f;
+                    score -= gridVal;
                 if (takenGrids[i] == 2)
-                    score += 0.1f;
+                    score += gridVal;
             }
             counter++;
 
@@ -570,12 +617,11 @@ namespace tictactics
                 }
             }
 
-            return score + balance*0.03f + possibleLines(2);
+            return (score + balance*markVal) * side + possibleLines(player);
         }
 
-        float AlphaBetaMin(Move m, int level, float alpha, float beta)
+        float AlphaBetaMin(Move m, int levels, float alpha, float beta, int depth, int perspective)
         {
-            mins++;
             int g = m.g;
             tryMove(m);
 
@@ -590,25 +636,23 @@ namespace tictactics
                 if (newState != 0)
                 {
                     int winner = CheckBigBoard();
-                    if (winner == 2)
+
+                    if (winner == perspective)
                     {
                         UnmakeMove(m);
-                        m.value = 1.0f + (1.0f /level);
-                        wins++;
+                        m.value = 1.0f + (1.0f /depth);
                         return m.value;
                     }
-                    else if (winner == 1)
+                    else if (winner != perspective && winner != 4 && winner != 0)
                     {
                         UnmakeMove(m);
-                        m.value = -1.0f -(1.0f /level);
-                        wins++;
+                        m.value = -1.0f -(1.0f /depth);
                         return m.value;
                     }
                     else if (winner == 4)
                     {
                         UnmakeMove(m);
                         m.value = 0;
-                        wins++;
                         return 0;
 
                     }
@@ -616,18 +660,18 @@ namespace tictactics
                 }
             }
 
-            if (level < levels)
+            if (levels > 0)
             {
                 List<Move> possible = GetLegalMoves(playerTurn);
 
                 if (possible.Count == 1)
-                    level--;
+                    levels++;
                 if (isFreeMove)
-                    level++;
+                    levels -= 2;
 
                 foreach (Move mov in possible)
                 {
-                    float score = AlphaBetaMax(mov, level + 1, alpha, beta);
+                    float score = AlphaBetaMax(mov, levels - 1, alpha, beta, depth + 1, perspective);
 
                     if (score >= beta)
                     {
@@ -645,7 +689,7 @@ namespace tictactics
             }
             else
             {
-                m.value = ScoreCurrentState();
+                m.value = ScoreCurrentState(perspective);
                 UnmakeMove(m);
                 return m.value;
             }
@@ -655,9 +699,8 @@ namespace tictactics
             return alpha;
         }
 
-        float AlphaBetaMax(Move m, int level, float alpha, float beta)
+        float AlphaBetaMax(Move m, int levels, float alpha, float beta, int depth, int perspective)
         {
-            maxes++;
             int g = m.g;
             tryMove(m);
 
@@ -672,25 +715,22 @@ namespace tictactics
                 if (newState != 0)
                 {
                     int winner = CheckBigBoard();
-                    if (winner == 2)
+                    if (winner == perspective)
                     {
                         UnmakeMove(m);
-                        m.value = 1.0f + (1.0f / level);
-                        wins++;
+                        m.value = 1.0f + (1.0f / depth);
                         return m.value;
                     }
-                    else if (winner == 1)
+                    else if (winner != perspective && winner != 4 && winner != 0)
                     {
                         UnmakeMove(m);
-                        m.value = -1.0f - (1.0f / level);
-                        wins++;
+                        m.value = -1.0f - (1.0f / depth);
                         return m.value;
                     }
                     else if (winner == 4)
                     {
                         UnmakeMove(m);
                         m.value = 0;
-                        wins++;
                         return 0;
 
                     }
@@ -698,18 +738,18 @@ namespace tictactics
                 }
             }
 
-            if (level < levels)
+            if (levels > 0)
             {
                 List<Move> possible = GetLegalMoves(playerTurn);
 
                 if (possible.Count == 1)
-                    level--;
+                    levels++;
                 if (isFreeMove)
-                    level++;
+                    levels -= 2;
 
                 foreach (Move mov in possible)
                 {
-                    float score = AlphaBetaMin(mov, level + 1,alpha,beta);
+                    float score = AlphaBetaMin(mov, levels - 1, alpha, beta, depth + 1, perspective);
 
                     if (score <= alpha)
                     {
@@ -726,7 +766,7 @@ namespace tictactics
             }
             else
             {
-                m.value = ScoreCurrentState();
+                m.value = ScoreCurrentState(perspective);
                 UnmakeMove(m);
                 return m.value;
             }
@@ -740,15 +780,7 @@ namespace tictactics
 
 
 
-
-        int fails = 0;
         int counter = 0;
-        int reverses = 0;
-        int wins = 0;
-        int mins = 0;
-        int maxes = 0;
-        int levels = 7;
-        int baseLevels = 7;
 
         public Move MakeAIMove()
         {

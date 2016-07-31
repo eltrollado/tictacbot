@@ -12,49 +12,86 @@ namespace tictactics
 
         Player[] players;
 
+        public delegate void DrawCallback(Game game);
+        public DrawCallback draw;
+
+        int[][] setup = new int[2][];
+
         public Match(Player player1, Player player2)
         {
-            game = new Game();
             players = new Player[] {player1,player2};
+            players[0].playerid = 1;
+            players[1].playerid = 2;
+
         }
 
         public void Setup()
         {
-            int[] moves = players[0].getSetup();
+            game = new Game();
+
+            setup[0] = players[0].getSetup();
 
             for (int i = 0; i < 9; i++)
             {
-                game.setField(moves[i], i, 1);
+                game.setField(setup[0][i], i, 1);
             }
 
             System.Threading.Thread.Sleep(100);
 
-            moves = players[1].getSetup();
+            setup[1] = players[1].getSetup();
 
             for (int i = 0; i < 9; i++)
             {
-                game.setField(moves[i], i, 2);
+                game.setField(setup[1][i], i, 2);
             }
+
+            players[0].game = new Game(game);
+            players[1].game = new Game(game);
         }
 
-        public delegate void DrawCallback();
 
-        public void Run(DrawCallback draw)
+        public void Run()
         {
-            Game g = new Game();
-            g.Copy(game);
+            Move m = null;
 
             while(!game.isFinished)
             {
-                if (game.playerTurn == 1)
-                    game.makeMove(game.GetRandomMove(game.playerTurn));
-                else game.MakeAIMove();
+
+                m = players[game.playerTurn - 1].getMove(m);
+
+                game.makeMove(m);
 
                 if (draw != null)
-                    draw();
+                    draw(game);
 
-                System.Threading.Thread.Sleep(200);
             }
+
+        }
+
+        public void Rematch()
+        {
+            game = new Game();
+
+            for (int i = 0; i < 9; i++)
+            {
+                game.setField(setup[0][i], i, 2);
+            }
+
+            for (int i = 0; i < 9; i++)
+            {
+                game.setField(setup[1][i], i, 1);
+            }
+
+            game.playerTurn = 2;
+
+            players[0].game = new Game(game);
+            players[1].game = new Game(game);
+
+            if (draw != null)
+                draw(game);
+            System.Threading.Thread.Sleep(200);
+
+            Run();
 
         }
 

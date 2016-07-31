@@ -28,7 +28,6 @@ namespace tictactics
         Grid[] grids;
         Rectangle[][] fields;
 
-        Game game;
 
         public MainWindow()
         {
@@ -40,16 +39,16 @@ namespace tictactics
 
             switch(e.Key)
             {
-                case Key.Left:
-                    game.Undo();
-                    game.Undo();
-                    DrawBoard();
-                    break;
-                case Key.Right:
-                    game.Redo();
-                    game.Redo();
-                    DrawBoard();
-                    break;
+                //case Key.Left:
+                //    game.Undo();
+                //    game.Undo();
+                //    DrawBoard();
+                //    break;
+                //case Key.Right:
+                //    game.Redo();
+                //    game.Redo();
+                //    DrawBoard();
+                //    break;
                 case Key.S:
                     if (setupMode)
                     {
@@ -82,51 +81,51 @@ namespace tictactics
 
         void DoSetup(int grid, int field)
         {
-            game.setField(grid, field, setupPlayer);
+            //game.setField(grid, field, setupPlayer);
 
-            DrawBoard();
+            //DrawBoard();
 
         }
 
         private void Rectangle_MouseUp(object sender, MouseButtonEventArgs e)
         {
 
-            Rectangle field = (Rectangle)sender;
-            Grid parent = (Grid)field.Parent;
+            //Rectangle field = (Rectangle)sender;
+            //Grid parent = (Grid)field.Parent;
 
-            int g = Int32.Parse(parent.Tag.ToString());
-            int f = Int32.Parse(field.Tag.ToString());
+            //int g = Int32.Parse(parent.Tag.ToString());
+            //int f = Int32.Parse(field.Tag.ToString());
 
-            if(setupMode)
-            {
-                DoSetup(g, f);
-                return;
-            }
-
-
-            if (!game.makeMove(g, f, 1))
-                return;
+            //if(setupMode)
+            //{
+            //    DoSetup(g, f);
+            //    return;
+            //}
 
 
-            DrawBoard();
+            //if (!game.makeMove(g, f, 1))
+            //    return;
 
-            Move m = game.MakeAIMove();
 
-            DrawBoard();
+            //DrawBoard();
+
+            //Move m = game.MakeAIMove();
+
+            //DrawBoard();
         }
 
-        private void DrawBoard()
+        private void DrawBoard(Game game)
         {
             for (int i = 0; i < 9; i++)
             {
                 for (int j = 0; j < 9; j++)
                 {
-                    ColorField(i, j);
+                    ColorField(i, j, game);
                 }
             }
         }
 
-        private void ColorField(int grid, int field)
+        private void ColorField(int grid, int field, Game game)
         {
             Color c;
             int state = game.takenGrids[grid];
@@ -220,28 +219,47 @@ namespace tictactics
                 fields[i] = grids[i].Children.OfType<Rectangle>().ToArray();
             }
 
-            game = new Game();
-            game.Output = console.WriteLine;
-
             await Task.Run(() => RunMatch());
         }
 
         void RunMatch()
         {
-            Match match = new Match(new AI(), new AI() );
-            game = match.game;
-            game.Output = console.WriteLine;
+            Match match = new Match(new AI(8, 0.005f,0.01f, 0.030f), new AI(8, 0.03f) );
+            match.draw = DrawAsync;
 
-            match.Setup();
-            this.Dispatcher.Invoke(DrawBoard);
+            int[] results = new int[5];
 
-            match.Run(DrawAsync);        
+
+            for (int i = 0; i < 70; i++)
+            {
+                match.Setup();
+                DrawAsync(match.game);
+                match.Run();
+
+                int r = match.game.CheckBigBoard();
+                results[r]++;
+                ConsoleWriteAsync(String.Format("B: {0}, R: {1}, D: {2}", results[1], results[2], results[4]));
+
+                System.Threading.Thread.Sleep(600);
+                match.Rematch();
+
+                r = match.game.CheckBigBoard();
+                results[r] ++;
+                ConsoleWriteAsync(String.Format("B: {0}, R: {1}, D: {2}",results[1],results[2],results[4]));
+
+                System.Threading.Thread.Sleep(600);
+            }
+
 
         }
 
-        public void DrawAsync()
+        public void ConsoleWriteAsync(string line)
         {
-            this.Dispatcher.Invoke(DrawBoard);
+            this.Dispatcher.Invoke(new Action(() => console.WriteLine(line)));
+        }
+        public void DrawAsync(Game game)
+        {
+            this.Dispatcher.Invoke(new Action(() => DrawBoard(game)));
         }
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
