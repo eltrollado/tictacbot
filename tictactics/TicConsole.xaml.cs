@@ -55,6 +55,12 @@ namespace tictactics
                 this.Hide();
 
         }
+
+        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+        {
+            e.Cancel = true;
+            this.Hide();
+        }
     }
 
     public class ConsoleContent : INotifyPropertyChanged

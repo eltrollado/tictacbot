@@ -223,6 +223,8 @@ namespace tictactics
                 if (sb[i] == 0) sb[i] = 8;
             }
 
+            bool p1win = false;
+            bool p2win = false;
             bool possibleWin = false;
 
             for (int i = 0; i < 8; i++)
@@ -230,12 +232,19 @@ namespace tictactics
                 int outcome = sb[pw[i, 0]] | sb[pw[i, 2]] | sb[pw[i, 1]];
 
                 if (outcome == 2 || outcome == 6)
-                    return 2;
+                    p2win = true;
                 if (outcome == 1 || outcome == 5)
-                    return 1;
+                    p1win = true;
                 if (outcome == 9 || outcome == 10 || outcome == 8)
                     possibleWin = true;
             }
+
+            if (p1win)
+                if (p2win)
+                    return 4;
+                else return 1;
+            else if (p2win)
+                return 2;
 
             if (possibleWin)
                 return 0;
@@ -704,15 +713,11 @@ namespace tictactics
 
 
 
-
-        int fails = 0;
         int counter = 0;
-        int reverses = 0;
         int wins = 0;
         int mins = 0;
         int maxes = 0;
         int levels = 7;
-        int baseLevels = 7;
 
         public Move MakeAIMove()
         {
