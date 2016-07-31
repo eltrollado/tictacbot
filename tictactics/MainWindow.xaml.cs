@@ -209,7 +209,7 @@ namespace tictactics
         }
 
 
-        async private void Grid_Loaded(object sender, RoutedEventArgs e)
+        private void Grid_Loaded(object sender, RoutedEventArgs e)
         {
             Grid grid = (Grid)sender;
             grids = grid.Children.OfType<Grid>().ToArray();
@@ -230,6 +230,8 @@ namespace tictactics
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             console.Close();
+
+            Application.Current.Shutdown();
         }
     }
 }

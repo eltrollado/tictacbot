@@ -251,29 +251,6 @@ namespace tictactics
             else return 4;
         }
 
-        float possibleLines(int player)
-        {
-            int[] possibleWin = {0,0};
-
-            for (int i = 0; i < 8; i++)
-            {
-                int outcome = takenGrids[pw[i, 0]] | takenGrids[pw[i, 2]] | takenGrids[pw[i, 1]];
-
-
-                if (outcome == 1)
-                    possibleWin[0]++;
-                    
-                if(outcome == 2)
-                    possibleWin[1]++;
-            }
-
-            if (player == 2)
-                return possibleWin[1] * 0.015f - possibleWin[0] * 0.01f;
-            else
-                return possibleWin[0] * 0.015f - possibleWin[1] * 0.01f;
-
-        }
-
 
         public void ClearBoard()
         {
@@ -487,11 +464,13 @@ namespace tictactics
             return makeMove(m.g, m.f, m.p);
         }
 
-        Move FindBestMove(int player)
+ 
+
+        public Move FindBestMove(int player)
         {
-            levels =  Math.Max(12, 12 + (moves - 30) / 4);
-            Output(String.Format("Scanning {0} levels", levels));
-                
+            int levels = Math.Max(12, 12 + (moves - 30) / 4);
+            //Output(String.Format("Scanning {0} levels", levels));
+
             List<Move> possible = GetLegalMoves(player);
             Move best;
 
@@ -500,8 +479,8 @@ namespace tictactics
             foreach (Move mov in possible)
             {
                 //Output(String.Format("move {0} out of {1}", i, possible.Count));
-                Console.WriteLine("move {0} out of {1}",i, possible.Count);
-                float score = AlphaBetaMax(mov,1,-100,100);
+                Console.WriteLine("move {0} out of {1}", i, possible.Count);
+                float score = AlphaBetaMax(mov, levels, -100, 100, 1, player);
 
                 ++i;
             }
@@ -514,21 +493,61 @@ namespace tictactics
             best = choices.ElementAt(rnd.Next(0, choices.Count()));
 
             Output(String.Format("Best val: {0}", best.value));
-            Console.WriteLine("Best val: {0}",best.value);
+            Console.WriteLine("Best val: {0}", best.value);
             return best;
+        }
+
+        public Move GetRandomMove(int player)
+        {
+            List<Move> possible = GetLegalMoves(player);
+            Random rnd = new Random();
+
+            return possible.ElementAt(rnd.Next(0, possible.Count()));
+
+        }
+
+        float possibleLines(int player)
+        {
+            int[] possibleWin = { 0, 0 };
+
+            const float value = 0.03f;
+
+            for (int i = 0; i < 8; i++)
+            {
+                int outcome = takenGrids[pw[i, 0]] | takenGrids[pw[i, 2]] | takenGrids[pw[i, 1]];
+
+
+                if (outcome == 1)
+                    possibleWin[0]++;
+
+                if (outcome == 2)
+                    possibleWin[1]++;
+            }
+
+            if (player == 2)
+                return possibleWin[1] * value - possibleWin[0] * value * 0.66f;
+            else
+                return possibleWin[0] * value - possibleWin[1] * value * 0.66f;
+
         }
 
 
 
-        float ScoreCurrentState()
+        float ScoreCurrentState(int player)
         {
             float score = 0;
+
+            const float gridVal = 0.1f;
+            const float markVal = 0.03f;
+
+            float side = player == 2 ? 1.0f : -1.0f;
+
             for (int i = 0; i < 9; i++)
             {
                 if (takenGrids[i] == 1)
-                    score -= 0.1f;
+                    score -= gridVal;
                 if (takenGrids[i] == 2)
-                    score += 0.1f;
+                    score += gridVal;
             }
             counter++;
 
@@ -536,19 +555,18 @@ namespace tictactics
 
             for (int i = 0; i < 9; i++)
             {
-                if(takenGrids[i] == 0)
+                if (takenGrids[i] == 0)
                 {
                     balance += p2grids[i];
                     balance -= p1grids[i];
                 }
             }
 
-            return score + balance*0.03f + possibleLines(2);
+            return (score + balance * markVal) * side + possibleLines(player);
         }
 
-        float AlphaBetaMin(Move m, int level, float alpha, float beta)
+        float AlphaBetaMin(Move m, int levels, float alpha, float beta, int depth, int perspective)
         {
-            mins++;
             int g = m.g;
             tryMove(m);
 
@@ -563,25 +581,23 @@ namespace tictactics
                 if (newState != 0)
                 {
                     int winner = CheckBigBoard();
-                    if (winner == 2)
+
+                    if (winner == perspective)
                     {
                         UnmakeMove(m);
-                        m.value = 1.0f + (1.0f /level);
-                        wins++;
+                        m.value = 1.0f + (1.0f / depth);
                         return m.value;
                     }
-                    else if (winner == 1)
+                    else if (winner != perspective && winner != 4 && winner != 0)
                     {
                         UnmakeMove(m);
-                        m.value = -1.0f -(1.0f /level);
-                        wins++;
+                        m.value = -1.0f - (1.0f / depth);
                         return m.value;
                     }
                     else if (winner == 4)
                     {
                         UnmakeMove(m);
                         m.value = 0;
-                        wins++;
                         return 0;
 
                     }
@@ -589,18 +605,18 @@ namespace tictactics
                 }
             }
 
-            if (level < levels)
+            if (levels > 0)
             {
                 List<Move> possible = GetLegalMoves(playerTurn);
 
                 if (possible.Count == 1)
-                    level--;
+                    levels++;
                 if (isFreeMove)
-                    level++;
+                    levels -= 2;
 
                 foreach (Move mov in possible)
                 {
-                    float score = AlphaBetaMax(mov, level + 1, alpha, beta);
+                    float score = AlphaBetaMax(mov, levels - 1, alpha, beta, depth + 1, perspective);
 
                     if (score >= beta)
                     {
@@ -618,7 +634,7 @@ namespace tictactics
             }
             else
             {
-                m.value = ScoreCurrentState();
+                m.value = ScoreCurrentState(perspective);
                 UnmakeMove(m);
                 return m.value;
             }
@@ -628,9 +644,8 @@ namespace tictactics
             return alpha;
         }
 
-        float AlphaBetaMax(Move m, int level, float alpha, float beta)
+        float AlphaBetaMax(Move m, int levels, float alpha, float beta, int depth, int perspective)
         {
-            maxes++;
             int g = m.g;
             tryMove(m);
 
@@ -645,25 +660,22 @@ namespace tictactics
                 if (newState != 0)
                 {
                     int winner = CheckBigBoard();
-                    if (winner == 2)
+                    if (winner == perspective)
                     {
                         UnmakeMove(m);
-                        m.value = 1.0f + (1.0f / level);
-                        wins++;
+                        m.value = 1.0f + (1.0f / depth);
                         return m.value;
                     }
-                    else if (winner == 1)
+                    else if (winner != perspective && winner != 4 && winner != 0)
                     {
                         UnmakeMove(m);
-                        m.value = -1.0f - (1.0f / level);
-                        wins++;
+                        m.value = -1.0f - (1.0f / depth);
                         return m.value;
                     }
                     else if (winner == 4)
                     {
                         UnmakeMove(m);
                         m.value = 0;
-                        wins++;
                         return 0;
 
                     }
@@ -671,18 +683,18 @@ namespace tictactics
                 }
             }
 
-            if (level < levels)
+            if (levels > 0)
             {
                 List<Move> possible = GetLegalMoves(playerTurn);
 
                 if (possible.Count == 1)
-                    level--;
+                    levels++;
                 if (isFreeMove)
-                    level++;
+                    levels -= 2;
 
                 foreach (Move mov in possible)
                 {
-                    float score = AlphaBetaMin(mov, level + 1,alpha,beta);
+                    float score = AlphaBetaMin(mov, levels - 1, alpha, beta, depth + 1, perspective);
 
                     if (score <= alpha)
                     {
@@ -699,7 +711,7 @@ namespace tictactics
             }
             else
             {
-                m.value = ScoreCurrentState();
+                m.value = ScoreCurrentState(perspective);
                 UnmakeMove(m);
                 return m.value;
             }
@@ -714,10 +726,6 @@ namespace tictactics
 
 
         int counter = 0;
-        int wins = 0;
-        int mins = 0;
-        int maxes = 0;
-        int levels = 7;
 
         public Move MakeAIMove()
         {
