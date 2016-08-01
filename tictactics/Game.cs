@@ -165,8 +165,8 @@ namespace tictactics
             int [] sb = new int[9];
             for (int i = 0; i < 9; i++)
 			{
-                sb[i] = board[grid, i] << 1;
-                if (sb[i] == 0) sb[i] = 1;
+                sb[i] = board[grid, i];
+                if (sb[i] == 0) sb[i] = 4;
 			}
 
             bool possibleWin = false;
@@ -175,9 +175,9 @@ namespace tictactics
             {
                 int outcome = sb[pw[i, 0]] | sb[pw[i, 2]] | sb[pw[i, 1]];
 
-                if (outcome == 2 || outcome == 4)
-                    return outcome >> 1;
-                if (outcome == 5 || outcome == 3)
+                if (outcome == 2 || outcome == 1)
+                    return outcome;
+                if (outcome == 6 || outcome == 5)
                     possibleWin = true;
             }
 

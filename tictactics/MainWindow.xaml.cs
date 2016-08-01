@@ -224,7 +224,7 @@ namespace tictactics
 
         void RunMatch()
         {
-            Match match = new Match(new AI(8, 0.005f,0.01f, 0.030f), new AI(8, 0.03f) );
+            Match match = new Match(new AI2(10, 0.03f), new AI(10) );
             match.draw = DrawAsync;
 
             int[] results = new int[5];
@@ -247,7 +247,7 @@ namespace tictactics
                 results[r] ++;
                 ConsoleWriteAsync(String.Format("B: {0}, R: {1}, D: {2}",results[1],results[2],results[4]));
 
-                System.Threading.Thread.Sleep(600);
+                System.Threading.Thread.Sleep(60);
             }
 
 
@@ -265,6 +265,7 @@ namespace tictactics
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             console.Close();
+            Application.Current.Shutdown();
         }
     }
 }
