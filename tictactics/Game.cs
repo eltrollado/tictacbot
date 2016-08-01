@@ -279,10 +279,11 @@ namespace tictactics
 
         public List<Move> GetLegalMoves(int player)
         {
-            List<Move> list = new List<Move>();
+            List<Move> list;            
 
             if (isFreeMove)
             {
+                list  = new List<Move>(30);
                 for (int i = 0; i < 9; i++)
                 {
                     for (int j = 0; j < 9; j++)
@@ -294,6 +295,8 @@ namespace tictactics
             }
             else
             {
+                list = new List<Move>(9);
+
                 for (int i = 0; i < 9; i++)
                 {
                     if (board[selectedGrid, i] != 0)
@@ -351,7 +354,12 @@ namespace tictactics
             lastMoveId++;
 
             if (lastMoveId != history.Count)
-                history.RemoveRange(lastMoveId, history.Count - lastMoveId);
+            {
+                int diff = history.Count - lastMoveId;
+                history.RemoveRange(lastMoveId, diff);
+                moves -= diff;
+            }
+                
             history.Add(m);
                 
             return true;
@@ -469,7 +477,8 @@ namespace tictactics
         public Move FindBestMove(int player)
         {
             int levels = Math.Max(12, 12 + (moves - 30) / 4);
-            //Output(String.Format("Scanning {0} levels", levels));
+
+            Output(String.Format("Scanning {0} levels", levels));
 
             List<Move> possible = GetLegalMoves(player);
             Move best;
@@ -486,8 +495,21 @@ namespace tictactics
             }
 
             float max = possible.Max(m => m.value);
-
             var choices = possible.Where(m => m.value == max);
+
+            if (choices.Count() > 1 && max < 1 && max > -1)
+            {
+                possible = choices.ToList();
+
+                foreach (Move m in choices)
+                {
+                    EvaluatePosition(m, player);
+                }
+
+                max = possible.Max(m => m.value);
+                choices = possible.Where(m => m.value == max);
+            }
+
             Random rnd = new Random(levels + possible.Count + player);
 
             best = choices.ElementAt(rnd.Next(0, choices.Count()));
@@ -496,6 +518,55 @@ namespace tictactics
             Console.WriteLine("Best val: {0}", best.value);
             return best;
         }
+
+        void EvaluatePosition(Move m, int perspective)
+        {
+            tryMove(m);
+
+            const float closeFactor = 0.1f;
+            const float lineFactor = 0.01f;
+
+            int[] closeWin = { 0, 0 };
+            int[] possibleLines = { 0, 0 };
+
+            int[] sb = new int[9];
+            for (int i = 0; i < 9; i++)
+            {
+                sb[i] = board[m.g, i];
+            }
+
+            for (int i = 0; i < 8; i++)
+            {
+                int[] c = new int[3];
+
+                int outcome = sb[pw[i, 0]] | sb[pw[i, 2]] | sb[pw[i, 1]];
+
+                if (outcome == 1)
+                {
+                    possibleLines[0]++;
+                    int sum = sb[pw[i, 0]] + sb[pw[i, 2]] + sb[pw[i, 1]];
+                    if (sum == 2)
+                        closeWin[0]++;
+                }
+                if (outcome == 2)
+                {
+                    possibleLines[1]++;
+                    int sum = sb[pw[i, 0]] + sb[pw[i, 2]] + sb[pw[i, 1]];
+                    if (sum == 4)
+                        closeWin[1]++;
+                }
+            }
+
+            float val = (closeWin[0] - closeWin[1]) * closeFactor + (possibleLines[0] - possibleLines[1]) * lineFactor;
+
+            if (perspective == 1)
+                m.value = val;
+            else m.value = -val;
+
+            UnmakeMove(m);
+        }
+
+
 
         public Move GetRandomMove(int player)
         {
