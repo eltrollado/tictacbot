@@ -224,7 +224,7 @@ namespace tictactics
 
         void RunMatch()
         {
-            Match match = new Match(new AI2(10, 0.03f), new AI(10) );
+            Match match = new Match(new AI3(8, 0.03f), new AI2(8, 0.03f));
             match.draw = DrawAsync;
 
             int[] results = new int[5];
@@ -244,10 +244,10 @@ namespace tictactics
                 match.Rematch();
 
                 r = match.game.CheckBigBoard();
-                results[r] ++;
-                ConsoleWriteAsync(String.Format("B: {0}, R: {1}, D: {2}",results[1],results[2],results[4]));
+                results[r]++;
+                ConsoleWriteAsync(String.Format("B: {0}, R: {1}, D: {2}", results[1], results[2], results[4]));
 
-                System.Threading.Thread.Sleep(60);
+                System.Threading.Thread.Sleep(30);
             }
 
 

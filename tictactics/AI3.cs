@@ -6,14 +6,14 @@ using System.Threading.Tasks;
 
 namespace tictactics
 {
-    class AI2 : Player
+    class AI3 : Player
     {
         float LineVal;
         int horizon;
         float gridVal;
         float markVal;
 
-        public AI2(int levels = 8, float lineValue = 0.015f, float gridValue = 0.1f, float markValue = 0.03f )
+        public AI3(int levels = 8, float lineValue = 0.015f, float gridValue = 0.1f, float markValue = 0.03f)
         {
             this.horizon = levels;
             LineVal = lineValue;
@@ -36,12 +36,9 @@ namespace tictactics
 
         override public int[] getSetup()
         {
-            if (playerid == 2)
-                return new int[9] {0,0,2,4,6,2,4,8,8};
-
             int[] setup = new int[9];
 
-            Random rnd  = new Random();
+            Random rnd = new Random();
 
             int[] vector = new int[9];
             Array.Clear(vector, 0, 9);
@@ -54,37 +51,124 @@ namespace tictactics
                 {
                     grid = (rnd.Next(0, 99) + rnd.Next(101)) % 9;
                 } while (vector[grid] >= 2 || (i == 4 && grid == 4));
-                 
+
                 setup[i] = grid;
                 vector[grid]++;
             }
 
             return setup;
         }
-
         int[,] pw = { { 0, 1, 2 }, { 3, 4, 5 }, { 6, 7, 8 }, { 0, 3, 6 }, { 1, 4, 7 }, { 2, 5, 8 }, { 0, 4, 8 }, { 2, 4, 6 } };
 
-        float possibleLines(int player)
+
+        int possibleLinesWithGrid(int grid)
         {
-            int[] possibleWin = { 0, 0 };            
+            int possibleLines = 0;
 
             for (int i = 0; i < 8; i++)
             {
-                int outcome = game.takenGrids[pw[i, 0]] | game.takenGrids[pw[i, 2]] | game.takenGrids[pw[i, 1]];
+                if (pw[i, 0] == grid || pw[i, 1] == grid || pw[i, 2] == grid)
+                {
+                    int outcome = game.takenGrids[pw[i, 0]] | game.takenGrids[pw[i, 2]] | game.takenGrids[pw[i, 1]];
 
-
-                if (outcome == 1)
-                    possibleWin[0]++;
-
-                if (outcome == 2)
-                    possibleWin[1]++;
+                    if (outcome == 1 || outcome == 2 || outcome == 0)
+                        possibleLines++;
+                }
             }
 
-            if (player == 2)
-                return possibleWin[1] * LineVal - possibleWin[0] * LineVal;
-            else
-                return possibleWin[0] * LineVal - possibleWin[1] * LineVal;
+            return possibleLines;
+        }
 
+        float EvaluatePossitioOnGrid(int grid, int perspective)
+        {
+            float sideFactor = perspective == 1 ? 1.0f : -1.0f;
+
+            const float closeFactor = 0.01f;
+            const float lineFactor = 0.002f;
+
+            int[] closeWin = { 0, 0 };
+            int[] possibleLines = { 0, 0 };
+
+            int[] sb = new int[9];
+            for (int i = 0; i < 9; i++)
+            {
+                sb[i] = game.board[grid, i];
+            }
+
+            for (int i = 0; i < 8; i++)
+            {
+                int[] c = new int[3];
+
+                int outcome = sb[pw[i, 0]] | sb[pw[i, 2]] | sb[pw[i, 1]];
+
+                if (outcome == 1)
+                {
+                    possibleLines[0]++;
+                    int sum = sb[pw[i, 0]] + sb[pw[i, 2]] + sb[pw[i, 1]];
+                    if (sum == 2)
+                        closeWin[0]++;
+                }
+                if (outcome == 2)
+                {
+                    possibleLines[1]++;
+                    int sum = sb[pw[i, 0]] + sb[pw[i, 2]] + sb[pw[i, 1]];
+                    if (sum == 4)
+                        closeWin[1]++;
+                }
+            }
+
+            float closeWinsVal = (float)Math.Sqrt(Math.Abs(closeWin[0] - closeWin[1])) * Math.Sign(closeWin[0] - closeWin[1]) * closeFactor;     
+            float val =  closeWinsVal + (possibleLines[0] - possibleLines[1]) * lineFactor;
+            val *= sideFactor;
+
+            return val;
+        }
+
+        float ScoreCurrentState(int player)
+        {
+            float score = 0;
+
+            float side = player == 2 ? 1.0f : -1.0f;
+
+            //float[] TemporaryScores = new float[9];
+
+            //Parallel.For(0, 9, i =>
+            //{
+            //    if (game.takenGrids[i] == 1)
+            //        TemporaryScores[i] = -gridVal * possibleLinesWithGrid(i) / 2.0f * side;
+            //    else if (game.takenGrids[i] == 2)
+            //        TemporaryScores[i] = gridVal * possibleLinesWithGrid(i) / 2.0f * side;
+            //    else
+            //    {
+            //        TemporaryScores[i] = EvaluatePossitioOnGrid(i, player) * possibleLinesWithGrid(i) / 2.0f;
+            //    }
+            //});
+            //score = TemporaryScores.Sum();
+
+            for (int i = 0; i < 9; i++)
+            {
+                if (game.takenGrids[i] == 1)
+                    score -= gridVal * possibleLinesWithGrid(i) / 2.0f * side;
+                else if (game.takenGrids[i] == 2)
+                    score += gridVal * possibleLinesWithGrid(i) / 2.0f * side;
+                else
+                {
+                    score += EvaluatePossitioOnGrid(i, player) * possibleLinesWithGrid(i) / 2.0f;
+                }
+            }
+
+            int balance = 0;
+
+            for (int i = 0; i < 9; i++)
+            {
+                if (game.takenGrids[i] == 0)
+                {
+                    balance += game.p2grids[i];
+                    balance -= game.p1grids[i];
+                }
+            }
+
+            return (balance * markVal * side + score) /10;
         }
 
         public Move FindBestMove(int player)
@@ -109,19 +193,6 @@ namespace tictactics
             float max = possible.Max(m => m.value);
             var choices = possible.Where(m => m.value == max);
 
-            if (choices.Count() > 1 && max < 1)
-            {
-                possible = choices.ToList();
-
-                foreach (Move m in choices)
-                {
-                    EvaluatePosition(m, player);
-                }
-
-                max = possible.Max(m => m.value);
-                choices = possible.Where(m => m.value == max);
-            }
-
             Random rnd = new Random(levels + possible.Count + player);
 
             best = choices.ElementAt(rnd.Next(0, choices.Count()));
@@ -129,84 +200,6 @@ namespace tictactics
             //Output(String.Format("Best val: {0}", best.value));
             Console.WriteLine("Best val: {0}", best.value);
             return best;
-        }
-
-        void EvaluatePosition(Move m, int perspective)
-        {
-            game.tryMove(m);
-
-            float sideFactor = perspective == 1 ? 1.0f : -1.0f;
-
-            const float closeFactor = 0.1f;
-            const float lineFactor = 0.01f;
-
-            int[] closeWin = { 0, 0 };
-            int[] blockedWin = { 0, 0 };
-            int[] possibleLines = { 0, 0 };
-
-            int[] sb = new int[9];
-            for (int i = 0; i < 9; i++)
-            {
-                sb[i] = game.board[m.g, i];
-            }
-
-            for (int i = 0; i < 8; i++)
-            {
-                int[] c = new int[3];
-
-                int outcome = sb[pw[i, 0]] | sb[pw[i, 2]] | sb[pw[i, 1]];
-
-                if (outcome == 1 )
-                {
-                    possibleLines[0]++;
-                    int sum = sb[pw[i, 0]] + sb[pw[i, 2]] + sb[pw[i, 1]];
-                    if (sum == 2)
-                        closeWin[0]++;
-                }
-                if (outcome == 2)
-                {
-                    possibleLines[1]++;
-                    int sum = sb[pw[i, 0]] + sb[pw[i, 2]] + sb[pw[i, 1]];
-                    if (sum == 4)
-                        closeWin[1]++;
-                }
-            }
-
-            float val = (closeWin[0] - closeWin[1]) * closeFactor + (possibleLines[0] - possibleLines[1]) * lineFactor;
-            val *= sideFactor;
-            m.value = val;
-
-            game.UnmakeMove(m);
-        }
-
-
-
-        float ScoreCurrentState(int player)
-        {
-            float score = 0;
-
-            float side = player == 2 ? 1.0f : -1.0f;
-
-            for (int i = 0; i < 9; i++)
-            {
-                if (game.takenGrids[i] == 1)
-                    score -= gridVal;
-                if (game.takenGrids[i] == 2)
-                    score += gridVal;
-            }
-
-            int balance = 0;
-
-            for (int i = 0; i < 9; i++)
-            {
-                if (game.takenGrids[i] == 0)
-                {
-                    balance += game.p2grids[i];
-                    balance -= game.p1grids[i];
-                }
-            }
-
-            return (score + balance * markVal) * side + possibleLines(player);
         }
 
         float AlphaBetaMin(Move m, int levels, float alpha, float beta, int depth, int perspective)

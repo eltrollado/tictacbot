@@ -64,6 +64,7 @@
     </Page>
     <Compile Include="AI.cs" />
     <Compile Include="AI2.cs" />
+    <Compile Include="AI3.cs" />
     <Compile Include="App.xaml.cs">
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
