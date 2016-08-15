@@ -472,59 +472,42 @@ namespace tictactics
             return makeMove(m.g, m.f, m.p);
         }
 
- 
 
-        public Move FindBestMove(int player)
+
+        public Move GetRandomMove(int player)
         {
-            int levels = Math.Max(12, 12 + (moves - 30) / 4);
-
-            Output(String.Format("Scanning {0} levels", levels));
-
             List<Move> possible = GetLegalMoves(player);
-            Move best;
+            Random rnd = new Random();
 
-            int i = 1;
+            return possible.ElementAt(rnd.Next(0, possible.Count()));
 
-            foreach (Move mov in possible)
-            {
-                //Output(String.Format("move {0} out of {1}", i, possible.Count));
-                Console.WriteLine("move {0} out of {1}", i, possible.Count);
-                float score = AlphaBetaMax(mov, levels, -100, 100, 1, player);
-
-                ++i;
-            }
-
-            float max = possible.Max(m => m.value);
-            var choices = possible.Where(m => m.value == max);
-
-            if (choices.Count() > 1 && max < 1 && max > -1)
-            {
-                possible = choices.ToList();
-
-                foreach (Move m in choices)
-                {
-                    EvaluatePosition(m, player);
-                }
-
-                max = possible.Max(m => m.value);
-                choices = possible.Where(m => m.value == max);
-            }
-
-            Random rnd = new Random(levels + possible.Count + player);
-
-            best = choices.ElementAt(rnd.Next(0, choices.Count()));
-
-            Output(String.Format("Best val: {0}", best.value));
-            Console.WriteLine("Best val: {0}", best.value);
-            return best;
         }
 
-        void EvaluatePosition(Move m, int perspective)
-        {
-            tryMove(m);
 
-            const float closeFactor = 0.1f;
-            const float lineFactor = 0.01f;
+        int possibleLinesWithGrid(int grid)
+        {
+            int possibleLines = 0;
+
+            for (int i = 0; i < 8; i++)
+            {
+                if (pw[i, 0] == grid || pw[i, 1] == grid || pw[i, 2] == grid)
+                {
+                    int outcome = takenGrids[pw[i, 0]] | takenGrids[pw[i, 2]] | takenGrids[pw[i, 1]];
+
+                    if (outcome == 1 || outcome == 2 || outcome == 0)
+                        possibleLines++;
+                }
+            }
+
+            return possibleLines;
+        }
+
+        float EvaluatePossitioOnGrid(int grid, int perspective)
+        {
+            float sideFactor = perspective == 1 ? 1.0f : -1.0f;
+
+            const float closeFactor = 0.01f;
+            const float lineFactor = 0.002f;
 
             int[] closeWin = { 0, 0 };
             int[] possibleLines = { 0, 0 };
@@ -532,7 +515,7 @@ namespace tictactics
             int[] sb = new int[9];
             for (int i = 0; i < 9; i++)
             {
-                sb[i] = board[m.g, i];
+                sb[i] = board[grid, i];
             }
 
             for (int i = 0; i < 8; i++)
@@ -557,70 +540,48 @@ namespace tictactics
                 }
             }
 
-            float val = (closeWin[0] - closeWin[1]) * closeFactor + (possibleLines[0] - possibleLines[1]) * lineFactor;
+            float closeWinsVal = (float)Math.Sqrt(Math.Abs(closeWin[0] - closeWin[1])) * Math.Sign(closeWin[0] - closeWin[1]) * closeFactor;
+            float val = closeWinsVal + (possibleLines[0] - possibleLines[1]) * lineFactor;
+            val *= sideFactor;
 
-            if (perspective == 1)
-                m.value = val;
-            else m.value = -val;
-
-            UnmakeMove(m);
+            return val;
         }
-
-
-
-        public Move GetRandomMove(int player)
-        {
-            List<Move> possible = GetLegalMoves(player);
-            Random rnd = new Random();
-
-            return possible.ElementAt(rnd.Next(0, possible.Count()));
-
-        }
-
-        float possibleLines(int player)
-        {
-            int[] possibleWin = { 0, 0 };
-
-            const float value = 0.03f;
-
-            for (int i = 0; i < 8; i++)
-            {
-                int outcome = takenGrids[pw[i, 0]] | takenGrids[pw[i, 2]] | takenGrids[pw[i, 1]];
-
-
-                if (outcome == 1)
-                    possibleWin[0]++;
-
-                if (outcome == 2)
-                    possibleWin[1]++;
-            }
-
-            if (player == 2)
-                return possibleWin[1] * value - possibleWin[0] * value * 0.66f;
-            else
-                return possibleWin[0] * value - possibleWin[1] * value * 0.66f;
-
-        }
-
-
 
         float ScoreCurrentState(int player)
         {
-            float score = 0;
-
             const float gridVal = 0.1f;
             const float markVal = 0.03f;
 
+            float score = 0;
+
             float side = player == 2 ? 1.0f : -1.0f;
+
+            //float[] TemporaryScores = new float[9];
+
+            //Parallel.For(0, 9, i =>
+            //{
+            //    if (game.takenGrids[i] == 1)
+            //        TemporaryScores[i] = -gridVal * possibleLinesWithGrid(i) / 2.0f * side;
+            //    else if (game.takenGrids[i] == 2)
+            //        TemporaryScores[i] = gridVal * possibleLinesWithGrid(i) / 2.0f * side;
+            //    else
+            //    {
+            //        TemporaryScores[i] = EvaluatePossitioOnGrid(i, player) * possibleLinesWithGrid(i) / 2.0f;
+            //    }
+            //});
+            //score = TemporaryScores.Sum();
 
             for (int i = 0; i < 9; i++)
             {
                 if (takenGrids[i] == 1)
-                    score -= gridVal;
-                if (takenGrids[i] == 2)
-                    score += gridVal;
+                    score -= gridVal * possibleLinesWithGrid(i) / 2.0f * side;
+                else if (takenGrids[i] == 2)
+                    score += gridVal * possibleLinesWithGrid(i) / 2.0f * side;
+                else
+                {
+                    score += EvaluatePossitioOnGrid(i, player) * possibleLinesWithGrid(i) / 2.0f;
+                }
             }
-            counter++;
 
             int balance = 0;
 
@@ -633,8 +594,41 @@ namespace tictactics
                 }
             }
 
-            return (score + balance * markVal) * side + possibleLines(player);
+            return (balance * markVal * side + score) / 10;
         }
+
+        public Move FindBestMove(int player)
+        {
+            int levels = Math.Max(10, 10 + (moves - 25) / 5);
+            Output(String.Format("Scanning {0} levels", levels));
+
+            List<Move> possible = GetLegalMoves(player);
+            Move best;
+
+            int i = 1;
+
+            foreach (Move mov in possible)
+            {
+                //Output(String.Format("move {0} out of {1}", i, possible.Count));
+                Console.WriteLine("move {0} out of {1}", i, possible.Count);
+                float score = AlphaBetaMax(mov, levels, -100, 100, 1, player);
+
+                ++i;
+            }
+
+            float max = possible.Max(m => m.value);
+            var choices = possible.Where(m => m.value == max);
+
+            Random rnd = new Random(levels + possible.Count + player);
+
+            best = choices.ElementAt(rnd.Next(0, choices.Count()));
+
+            Output(String.Format("Best val: {0}", best.value));
+            Console.WriteLine("Best val: {0}", best.value);
+            return best;
+        }
+
+
 
         float AlphaBetaMin(Move m, int levels, float alpha, float beta, int depth, int perspective)
         {
